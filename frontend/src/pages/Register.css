@@ -1,0 +1,175 @@
+/* Register Page — matches provided design */
+
+.reg-bg {
+    min-height: 100vh;
+    background-color: #86c9a8;
+    /* mint green background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: 'Inter', sans-serif;
+}
+
+.reg-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 44px 44px 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Avatar circle */
+.reg-avatar {
+    width: 68px;
+    height: 68px;
+    background: #d4eae4;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.reg-avatar svg {
+    width: 40px;
+    height: 40px;
+}
+
+.reg-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.reg-subtitle {
+    font-size: 0.92rem;
+    color: #888;
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+/* Error */
+.reg-error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.reg-form {
+    width: 100%;
+}
+
+.reg-field {
+    margin-bottom: 16px;
+}
+
+.reg-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.reg-input {
+    width: 100%;
+    padding: 11px 18px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 50px;
+    /* pill shape */
+    background: #f8fafc;
+    font-size: 0.93rem;
+    font-family: 'Inter', sans-serif;
+    color: #1a1a1a;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.reg-input:focus {
+    border-color: #86c9a8;
+    box-shadow: 0 0 0 3px rgba(134, 201, 168, 0.25);
+    background: #fff;
+}
+
+/* Button */
+.reg-btn {
+    width: 100%;
+    padding: 13px;
+    margin-top: 8px;
+    background: #7aabA0;
+    /* muted teal, matches screenshot */
+    color: #fff;
+    font-size: 0.97rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.reg-btn:hover:not(:disabled) {
+    background: #5f9a8f;
+    transform: translateY(-1px);
+}
+
+.reg-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.reg-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Spinner */
+.reg-spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: reg-spin 0.7s linear infinite;
+}
+
+@keyframes reg-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Footer */
+.reg-footer {
+    margin-top: 20px;
+    font-size: 0.88rem;
+    color: #666;
+    text-align: center;
+}
+
+.reg-footer a {
+    color: #2196f3;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.reg-footer a:hover {
+    text-decoration: underline;
+}

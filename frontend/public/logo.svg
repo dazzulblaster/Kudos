@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Vertical stem of K -->
+  <path
+    d="M22 10 C18 10 15 13 15 17 L15 83 C15 87 18 90 22 90 L30 90 C34 90 37 87 37 83 L37 17 C37 13 34 10 30 10 Z"
+    fill="url(#g1)"
+  />
+  <!-- Top arm of K (upper-right diagonal ribbon) -->
+  <path
+    d="M33 48 L72 12 C74 10 77 10 79 12 L85 18 C87 20 87 23 85 25 L46 61 Z"
+    fill="url(#g2)"
+    opacity="0.92"
+  />
+  <!-- Bottom arm of K (lower-right diagonal ribbon) -->
+  <path
+    d="M33 52 L62 80 C64 82 67 83 69 81 L78 75 C80 73 80 70 78 68 L46 40 Z"
+    fill="url(#g3)"
+    opacity="0.88"
+  />
+  <!-- Overlay highlight on vertical stem -->
+  <path
+    d="M26 10 C24 10 22 11 21 13 L37 30 L37 17 C37 13 34 10 30 10 Z"
+    fill="rgba(255,255,255,0.22)"
+  />
+  <!-- Overlay highlight on top arm -->
+  <path
+    d="M33 48 L55 26 L46 61 Z"
+    fill="rgba(255,255,255,0.18)"
+  />
+  <defs>
+    <linearGradient id="g1" x1="15" y1="10" x2="37" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6dd5a8"/>
+      <stop offset="100%" stop-color="#3aa876"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="33" y1="12" x2="85" y2="61" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8ae0bb"/>
+      <stop offset="100%" stop-color="#4db88a"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="33" y1="80" x2="78" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ec997"/>
+      <stop offset="100%" stop-color="#a8e8cc"/>
+    </linearGradient>
+  </defs>
+</svg>

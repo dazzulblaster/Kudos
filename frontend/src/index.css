@@ -1,0 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Reset App.css default, all real styles live in App.css */
+body {
+  font-family: 'Inter', sans-serif;
+}

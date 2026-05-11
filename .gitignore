@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment & secrets
+.env
+backend/.env
+backend/serviceAccountKey.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build output
+frontend/dist/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Antigravity / Gemini
+.gemini/
+.claude/

@@ -69,20 +69,21 @@
 <tr>
 <td width="50%">
 
-### 📝 Markdown Notes
-- Rich **markdown editor** with toolbar
-- **Auto-save** with 1-second debounce
-- Live preview with GFM support
-- Headings, lists, code blocks, tables & more
-
-</td>
-<td width="50%">
-
 ### 👤 Account & Security
 - Email/password authentication
 - Change username & password
 - Re-authentication for security
 - Per-user data isolation
+
+</td>
+<td width="50%">
+
+### 📊 Dashboard
+- Overview stats (subjects, files, tasks)
+- Pending tasks at a glance
+- Quick action shortcuts
+- Daily study tips
+- Integrated Pomodoro timer control
 
 </td>
 </tr>
@@ -132,7 +133,7 @@
 | **AI** | Google Gemini API | Quiz, flashcard & chat generation |
 | **PDF** | PyMuPDF (fitz) | Server-side text extraction |
 | **Icons** | Lucide React | Modern icon library |
-| **Markdown** | react-markdown + remark-gfm | Note rendering |
+| **Markdown** | react-markdown + remark-gfm | Study notes rendering |
 
 ---
 
@@ -211,8 +212,8 @@ const firebaseConfig = {
 ┌─────────────────────────────────────────────────────────────┐
 │               React Frontend  (port 5173)                   │
 │                                                             │
-│  Pages: Dashboard, Library, FileView, Notes, Tasks,         │
-│         Chatbot, Account, Admin                             │
+│  Pages: Dashboard, Library, FileView, Tasks,                │
+│         Chatbot, Account                                    │
 │  State: useState + TimerContext (global Pomodoro timer)      │
 │  Auth : Firebase Auth SDK (client-side)                     │
 │  DB   : Firestore SDK (browser ↔ cloud)                     │
@@ -226,7 +227,6 @@ const firebaseConfig = {
 │  Stateless — no DB   │    │  • Firestore — structured data   │
 │  • PDF text extract  │    │  • Storage  — PDF binary files   │
 │  • Gemini AI calls   │    └─────────────────────────────────┘
-│  • Admin endpoints   │
 └──────────┬───────────┘
            │ google-genai SDK
            ▼
@@ -252,10 +252,6 @@ const firebaseConfig = {
 | `POST` | `/file-chat` | RAG chat grounded in PDF content |
 | `POST` | `/generate-quiz` | Generate 15 MCQs from document |
 | `POST` | `/generate-flashcards` | Generate 15 flashcards from document |
-| `GET` | `/auth/check-admin` | Check admin status (requires Bearer token) |
-| `GET` | `/admin/users` | List all users (admin only) |
-| `DELETE` | `/admin/users/{uid}` | Delete a user (admin only) |
-| `PATCH` | `/admin/users/{uid}` | Update user display name (admin only) |
 
 <details>
 <summary><strong>📋 Gemini Model Fallback Strategy</strong></summary>
@@ -280,7 +276,6 @@ Kudos/
 │   ├── index.html                  # Entry HTML
 │   ├── package.json                # Dependencies
 │   ├── vite.config.js              # Vite configuration
-│   ├── 📂 public/                  # Static assets (icons, logo)
 │   └── 📂 src/
 │       ├── App.jsx                 # Router + auth guards
 │       ├── firebase.js             # Firebase SDK init
@@ -292,8 +287,6 @@ Kudos/
 │           ├── Library.jsx         # Subject folders
 │           ├── SubjectDetail.jsx   # Files within a subject
 │           ├── FileView.jsx        # Study/Flashcard/Quiz tabs
-│           ├── Notes.jsx           # Note list
-│           ├── NoteEditor.jsx      # Markdown editor
 │           ├── Tasks.jsx           # Task manager
 │           ├── Chatbot.jsx         # AI chat
 │           └── Account.jsx         # Profile management
@@ -316,11 +309,9 @@ Kudos/
 | `users` | `uid`, `username`, `email`, `createdAt` | User profiles |
 | `subjects` | `uid`, `name`, `description`, `createdAt` | Subject folders |
 | `files` | `uid`, `subjectId`, `name`, `downloadURL`, `extractedText` | Uploaded PDFs |
-| `notes` | `uid`, `title`, `content`, `createdAt` | Markdown notes |
 | `tasks` | `uid`, `title`, `dueDate`, `priority`, `category`, `completed` | Tasks |
 | `flashcards` | `uid`, `fileId`, `cards[]` | Generated flashcard decks |
 | `quizzes` | `uid`, `fileId`, `questions[]` | Generated quiz sets |
-| `admins` | *(doc ID = UID)* | Admin user whitelist |
 
 </details>
 

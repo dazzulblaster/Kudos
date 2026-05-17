@@ -4,11 +4,9 @@
 
 ### 1. Fix Hardcoded URLs
 Your frontend has `http://localhost:8000` hardcoded in multiple files:
-- `frontend/src/pages/FileView.jsx` (line 16)
-- `frontend/src/pages/SubjectDetail.jsx` (line 15)
-- `frontend/src/pages/Chatbot.jsx` (line 6)
-- `frontend/src/pages/Login.jsx` (line 7)
-- `frontend/src/App.jsx` (line 54 — AdminRoute)
+- `frontend/src/pages/FileView.jsx`
+- `frontend/src/pages/SubjectDetail.jsx`
+- `frontend/src/pages/Chatbot.jsx`
 
 **Fix:** Replace all with an environment variable:
 ```js
@@ -68,7 +66,6 @@ allow_origins=["http://localhost:5173", "https://your-frontend.run.app"]
 ### 4. Environment Variables on Cloud Run
 Set these in the Cloud Run backend service:
 - `GEMINI_API_KEY` — your Gemini API key
-- `FIREBASE_SERVICE_ACCOUNT` — path or JSON content (if using admin features)
 
 ### 5. Deploy Commands
 ```bash

@@ -6,12 +6,12 @@
 
 ## 1. Project Overview
 
-**Kudos** is an AI-powered study platform designed to help students manage their academic workload more effectively. It combines traditional productivity tools (notes, tasks, a Pomodoro timer) with AI-driven study features (PDF-based flashcard and quiz generation, document Q&A, and a general study chatbot). The platform targets university students who want a single, integrated environment for organising materials and studying actively.
+**Kudos** is an AI-powered study platform designed to help students manage their academic workload more effectively. It combines traditional productivity tools (tasks, a Pomodoro timer) with AI-driven study features (PDF-based flashcard and quiz generation, document Q&A, and a general study chatbot). The platform targets university students who want a single, integrated environment for organising materials and studying actively.
 
 **Key value proposition:**
 - Upload lecture notes or textbooks as PDFs, and the system automatically generates flashcards and quizzes from the content.
 - Chat with an AI assistant grounded in your own uploaded documents.
-- Manage tasks, notes, and study sessions in the same place.
+- Manage tasks and study sessions in the same place.
 
 ---
 
@@ -31,8 +31,8 @@
 | **AI / LLM** | Google Gemini API | gemini-2.5-flash family |
 | **PDF Parsing** | PyMuPDF (fitz) | Server-side text extraction |
 | **File Upload** | python-multipart | Required by FastAPI for `UploadFile` |
-| **Backend Auth (Admin)** | firebase-admin (Python) | Server-side token verification |
-| **Markdown Rendering** | react-markdown + remark-gfm | In-browser note rendering |
+
+| **Markdown Rendering** | react-markdown + remark-gfm | In-browser study notes rendering |
 | **Icons** | Lucide React | 0.577.0 |
 
 ---
@@ -43,7 +43,7 @@
 ┌───────────────────────────────────────────────────────────────┐
 │                  React Frontend  (port 5173)                  │
 │                                                               │
-│  Pages: Dashboard, Library, FileView, Notes, Tasks, Chatbot  │
+│  Pages: Dashboard, Library, FileView, Tasks, Chatbot         │
 │  State: useState (local) + TimerContext (global)             │
 │  Auth : Firebase Auth SDK (client-side)                      │
 │  DB   : Firestore SDK (direct browser ↔ cloud)               │
@@ -86,13 +86,12 @@
 - Session persistence is handled automatically by the Firebase SDK.
 - A custom `PrivateRoute` component in React Router wraps all protected pages and redirects unauthenticated users to `/login`.
 - All Firestore queries are scoped by `uid` (the Firebase user ID), so each user only sees their own data.
-- On login, the system checks admin status via the backend (`GET /auth/check-admin`). If the user is an admin, they are redirected to `/admin`; otherwise, to `/dashboard`.
+- On successful login, the user is redirected to `/dashboard`.
 
 ### 4.2 Dashboard
 - The landing page after login, providing an overview of the user's activity.
 - Displays: total subjects, total files, active tasks count, completed tasks count.
 - Shows a list of pending (incomplete) tasks.
-- Shows recently created notes.
 - Includes a quick-access card for AI features.
 - Hosts the **Pomodoro timer** quick-start control.
 
@@ -131,13 +130,8 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 - The result is saved to the `quizzes` Firestore collection.
 - Users answer the quiz and receive a score with per-question explanations.
 
-### 4.5 Notes
-- Users can create, view, edit, and delete markdown-formatted notes.
-- The **NoteEditor** page provides a rich toolbar (bold, italic, headings, lists, code blocks, etc.) and a live preview rendered by `react-markdown` with `remark-gfm`.
-- Notes are **auto-saved** with a 1-second debounce — every keystroke starts a timer, and only when the user stops typing for 1 second does it write to Firestore.
-- Notes are stored in the `notes` Firestore collection scoped by `uid`.
 
-### 4.6 Tasks
+### 4.5 Tasks
 - A full task management system with the following fields per task:
   - `title`, `description`, `dueDate`, `priority` (High / Medium / Low), `category` (Exam / Assignment / Reading / Project / Lab / Revision / Other), `completed`.
 - Supports creating, editing, marking complete/incomplete, and deleting tasks.
@@ -146,13 +140,13 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 - Overdue detection — tasks past their due date are visually highlighted.
 - Stored in the `tasks` Firestore collection scoped by `uid`.
 
-### 4.7 General AI Chatbot
+### 4.6 General AI Chatbot
 - A standalone chat interface (`Chatbot` page) where users can ask any study-related question.
 - Powered by Gemini via the backend `POST /chat` endpoint.
 - The backend injects a **system prompt** defining the AI persona as "Kudos AI", a friendly study assistant that redirects off-topic questions back to academics.
 - Chat history is **not persisted** — conversations reset on page reload.
 
-### 4.8 Account Management
+### 4.7 Account Management
 - A dedicated Account page (`/account`) where users can:
   - View their profile card (avatar with initials, display name, email).
   - **Change username** — updates Firebase Auth `displayName` via `updateProfile`.
@@ -160,7 +154,7 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
   - View read-only account details (email, sign-in method).
   - Log out.
 
-### 4.9 Pomodoro Timer
+### 4.8 Pomodoro Timer
 - A floating, globally accessible timer widget managed by `TimerContext`.
 - Can be started from the Dashboard and persists as a **floating overlay** (`FloatingTimer` component) while the user navigates to other pages.
 - Supports pause, resume, reset, and stop controls.
@@ -169,16 +163,6 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 - Can be minimized to a compact view showing only the time.
 - Sends a **browser notification** when the session completes (requests permission on first start).
 
-### 4.10 Admin Module (Optional)
-- An optional admin dashboard for user management, only enabled when a `serviceAccountKey.json` file is present in the backend folder.
-- On login, the frontend checks if the user is an admin by calling `GET /auth/check-admin` with a Firebase ID token.
-- If the user is an admin (their UID exists in the Firestore `admins` collection), they are redirected to `/admin` instead of `/dashboard`.
-- The admin page (`AdminRoute`-protected) allows:
-  - Viewing all registered users from the `users` Firestore collection.
-  - Editing a user's display name (updates both Firebase Auth and Firestore).
-  - Deleting a user (removes from both Firebase Auth and Firestore).
-- The `require_admin` dependency on the backend verifies the Firebase ID token server-side and checks the `admins` collection before granting access.
-- If the Firebase Admin SDK is not configured, all admin endpoints gracefully return `is_admin: false` or HTTP 503 — the rest of the system is unaffected.
 
 ---
 
@@ -194,10 +178,6 @@ All collections are in Firebase Firestore. Documents are scoped by `uid` (the au
 | `email` | string | Email address |
 | `createdAt` | Timestamp | Firestore server timestamp |
 
-### `admins`
-| Field | Type | Description |
-|---|---|---|
-| *(document ID)* | string | The UID of the admin user. If a document exists for a UID, that user is an admin. |
 
 ### `subjects`
 | Field | Type | Description |
@@ -218,13 +198,6 @@ All collections are in Firebase Firestore. Documents are scoped by `uid` (the au
 | `extractedText` | string | Full plain text extracted from PDF |
 | `uploadedAt` | Timestamp | Firestore server timestamp |
 
-### `notes`
-| Field | Type | Description |
-|---|---|---|
-| `uid` | string | Owner's Firebase user ID |
-| `title` | string | Note title |
-| `content` | string | Markdown content |
-| `createdAt` | Timestamp | Firestore server timestamp |
 
 ### `tasks`
 | Field | Type | Description |
@@ -263,17 +236,11 @@ Base URL: `http://localhost:8000`
 | Method | Endpoint | Input | Output | Purpose |
 |---|---|---|---|---|
 | GET | `/` | — | `{status, version}` | Health check |
-| GET | `/debug/admin-status` | — | `{admin_enabled, apps_count}` | Check if Firebase Admin SDK is active |
 | POST | `/chat` | `{message: str, user_id?: str}` | `{response: str}` | General study AI chat |
 | POST | `/extract-text` | Multipart PDF file | `{text: str, chars: int}` | Extract text from uploaded PDF |
 | POST | `/file-chat` | `{message: str, context: str}` | `{response: str}` | RAG chat grounded in PDF content |
 | POST | `/generate-quiz` | `{context: str}` | `{questions: [...]}` | Generate 15 MCQs from document |
 | POST | `/generate-flashcards` | `{context: str}` | `{cards: [...]}` | Generate 15 flashcards from document |
-| GET | `/auth/check-admin` | `Authorization: Bearer <token>` | `{is_admin: bool}` | Check if user is in admins collection |
-| GET | `/auth/my-uid` | `Authorization: Bearer <token>` | `{uid, email}` | Return the UID of the authenticated user |
-| GET | `/admin/users` | `Authorization: Bearer <token>` | `{users: [...], total}` | List all users (admin only) |
-| DELETE | `/admin/users/{uid}` | `Authorization: Bearer <token>` | `{success: bool}` | Delete a user (admin only) |
-| PATCH | `/admin/users/{uid}` | `{username: str}` + `Authorization` | `{success: bool}` | Update a user's display name (admin only) |
 
 **Notes:**
 - `context` fields are truncated server-side to 10,000 characters (`/file-chat`) or 12,000 characters (`/generate-quiz`, `/generate-flashcards`) to stay within Gemini token limits.
@@ -334,17 +301,6 @@ User types question in Study tab
   → (Not saved to Firestore — session only)
 ```
 
-### 7.5 Note Auto-Save Flow
-```
-User types in NoteEditor.jsx
-  → onChange fires → setSaveStatus("unsaved")
-  → clearTimeout(debounceRef) — cancel pending save
-  → setTimeout(saveNote, 1000) — start new 1s timer
-  → [1 second of no typing passes]
-  → saveNote() fires:
-      updateDoc(firestore, "notes/{noteId}", {title, content})
-  → setSaveStatus("saved")
-```
 
 ---
 
@@ -358,15 +314,13 @@ User types in NoteEditor.jsx
 /library ─────────────────────→ Library - subject list (protected)
 /library/:subjectId ──────────→ SubjectDetail - file list (protected)
 /library/:subjectId/file/:fileId → FileView - Study/Flashcard/Quiz (protected)
-/notes ───────────────────────→ Notes list (protected)
-/notes/:id ───────────────────→ NoteEditor (protected)
+
 /tasks ───────────────────────→ Task manager (protected)
 /chatbot ─────────────────────→ General AI chatbot (protected)
 /account ─────────────────────→ Account management (protected)
-/admin ───────────────────────→ Admin dashboard (AdminRoute-protected)
 ```
 
-All protected routes are wrapped in a `PrivateRoute` component that checks `onAuthStateChanged()` and redirects to `/login` if no authenticated user is found. The `/admin` route uses a separate `AdminRoute` wrapper that also verifies admin status via the backend API.
+All protected routes are wrapped in a `PrivateRoute` component that checks `onAuthStateChanged()` and redirects to `/login` if no authenticated user is found.
 
 ---
 
@@ -376,7 +330,7 @@ All protected routes are wrapped in a `PrivateRoute` component that checks `onAu
 |---|---|---|
 | Authentication | Global (app-wide) | Firebase `onAuthStateChanged()` |
 | Pomodoro timer | Global (all pages) | React Context API (`TimerContext`) |
-| Page data (subjects, files, notes, tasks) | Per-page | `useState` + `useEffect` on mount |
+| Page data (subjects, files, tasks) | Per-page | `useState` + `useEffect` on mount |
 | Form inputs | Per-component | `useState` |
 | Loading / error states | Per-component | `useState` |
 
@@ -436,12 +390,10 @@ Kudos/
 │           ├── Library.jsx / Library.css      # Subject list
 │           ├── SubjectDetail.jsx / SubjectDetail.css  # File list + PDF upload
 │           ├── FileView.jsx / FileView.css    # Study / Flashcard / Quiz tabs
-│           ├── Notes.jsx                      # Note list
-│           ├── NoteEditor.jsx / NoteEditor.css  # Markdown editor with auto-save
+
 │           ├── Tasks.jsx / Tasks.css          # Task manager
 │           ├── Chatbot.jsx                    # General AI chat
-│           ├── Account.jsx                    # Profile & password management
-│           └── Admin.jsx / Admin.css          # Admin user management dashboard
+│           └── Account.jsx                    # Profile & password management
 │
 └── backend/                         # FastAPI application
     ├── main.py                      # All routes, models, and helpers
@@ -453,7 +405,7 @@ Kudos/
 
 ## 12. Known Limitations & Areas for Improvement
 
-1. **No backend authentication on AI endpoints:** The FastAPI AI endpoints (`/chat`, `/file-chat`, `/generate-quiz`, `/generate-flashcards`) are publicly accessible. Firebase tokens are not verified for these routes, meaning anyone who discovers the API URL can call them without being logged in. (Note: the admin endpoints _do_ verify tokens server-side.)
+1. **No backend authentication on AI endpoints:** The FastAPI AI endpoints (`/chat`, `/file-chat`, `/generate-quiz`, `/generate-flashcards`) are publicly accessible. Firebase tokens are not verified for these routes, meaning anyone who discovers the API URL can call them without being logged in.
 
 2. **No chat history persistence:** Conversations in both the general Chatbot and the File Chat reset when the page is refreshed. There is no message history saved to Firestore.
 
@@ -467,8 +419,7 @@ Kudos/
 
 7. **Single-file backend:** All backend logic (routes, models, helpers) lives in one `main.py` file. As the system grows, this would benefit from being split into separate router and service modules.
 
-8. **Study tab notes are not saved:** Notes taken in the FileView Study tab are stored in React local state only. They are lost on page reload or navigation. Only the NoteEditor (`/notes`) saves notes to Firestore.
+8. **Study tab notes are not saved:** Notes taken in the FileView Study tab are stored in React local state only. They are lost on page reload or navigation.
 
 9. **No subject deletion cascade:** Deleting a subject folder from the Library does not automatically delete its associated files from Firebase Storage or Firestore. Files must be deleted individually first.
 
-10. **Sidebar does not link to Notes:** The sidebar navigation includes Dashboard, Library, Tasks, and Kudos AI, but does not include a direct link to the Notes page. Notes must be accessed via the Dashboard's "Recent Notes" section or by navigating to `/notes` manually.

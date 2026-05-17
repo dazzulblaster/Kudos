@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Header
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
@@ -7,29 +7,7 @@ import os, json, re, time, tempfile, fitz  # fitz = PyMuPDF
 
 load_dotenv()
 
-# ── Firebase Admin SDK (optional — only if serviceAccountKey.json exists) ──────
-_admin_enabled = False
-import sys, traceback
-try:
-    import firebase_admin
-    from firebase_admin import credentials, auth as fb_auth, firestore as fb_fs
-    _SA_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT", "serviceAccountKey.json")
-    print(f"[init] Looking for service account key at: {os.path.abspath(_SA_PATH)}", file=sys.stderr, flush=True)
-    print(f"[init] File exists: {os.path.exists(_SA_PATH)}", file=sys.stderr, flush=True)
-    if os.path.exists(_SA_PATH):
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(credentials.Certificate(_SA_PATH))
-            print("[init] Firebase Admin SDK initialized (fresh).", file=sys.stderr, flush=True)
-        else:
-            print("[init] Firebase Admin SDK already initialized (reload).", file=sys.stderr, flush=True)
-        _admin_enabled = True
-    else:
-        print(f"[warn] {_SA_PATH} not found — admin endpoints disabled.", file=sys.stderr, flush=True)
-except Exception as _e:
-    print(f"[FATAL] Firebase Admin SDK error: {_e}", file=sys.stderr, flush=True)
-    traceback.print_exc(file=sys.stderr)
 
-print(f"[init] _admin_enabled = {_admin_enabled}", file=sys.stderr, flush=True)
 
 
 app = FastAPI(title="Kudos Study Platform API")
@@ -169,10 +147,6 @@ def root():
     return {"status": "Kudos API is running 🚀", "version": "2.0.0"}
 
 
-@app.get("/debug/admin-status")
-def debug_admin_status():
-    """Quick check — is the Firebase Admin SDK initialized?"""
-    return {"admin_enabled": _admin_enabled, "apps_count": len(firebase_admin._apps) if _admin_enabled else 0}
 
 
 
@@ -297,95 +271,3 @@ Rules:
         raise HTTPException(500, f"AI error: {str(e)}")
 
 
-# ── Auth helpers ──────────────────────────────────────────────────────────────
-
-@app.get("/auth/check-admin")
-async def check_admin(authorization: str = Header(None)):
-    """Check if the authenticated user is in the Firestore admins collection.
-    Uses the Admin SDK (server-side) so it bypasses client Firestore rules."""
-    if not _admin_enabled:
-        print("[check-admin] Firebase Admin SDK not enabled")
-        return {"is_admin": False}
-    if not authorization or not authorization.startswith("Bearer "):
-        print("[check-admin] No valid Authorization header")
-        return {"is_admin": False}
-    try:
-        decoded = fb_auth.verify_id_token(authorization[7:])
-        uid = decoded["uid"]
-        admin_doc = fb_fs.client().collection("admins").document(uid).get()
-        print(f"[check-admin] uid={uid}, doc_exists={admin_doc.exists}")
-        return {"is_admin": admin_doc.exists}
-    except Exception as e:
-        print(f"[check-admin] Error: {e}")
-        return {"is_admin": False}
-
-
-@app.get("/auth/my-uid")
-async def get_my_uid(authorization: str = Header(None)):
-    """Return the UID of the currently authenticated user.
-    Handy for setting up the admins collection correctly."""
-    if not _admin_enabled:
-        return {"error": "Firebase Admin SDK not enabled"}
-    if not authorization or not authorization.startswith("Bearer "):
-        return {"error": "Authorization header required"}
-    try:
-        decoded = fb_auth.verify_id_token(authorization[7:])
-        return {"uid": decoded["uid"], "email": decoded.get("email", "")}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# ── Admin ─────────────────────────────────────────────────────────────────────
-
-class UpdateUserRequest(BaseModel):
-    username: str
-
-
-async def require_admin(authorization: str = Header(None)) -> str:
-    """Verify Firebase ID token and confirm the user is in the admins collection."""
-    if not _admin_enabled:
-        raise HTTPException(503, "Admin features not configured. Place serviceAccountKey.json in the backend folder.")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Authorization header required.")
-    token = authorization[7:]
-    try:
-        decoded = fb_auth.verify_id_token(token)
-        uid = decoded["uid"]
-    except Exception:
-        raise HTTPException(401, "Invalid or expired token.")
-    admin_doc = fb_fs.client().collection("admins").document(uid).get()
-    if not admin_doc.exists:
-        raise HTTPException(403, "Admin access required.")
-    return uid
-
-
-@app.get("/admin/users")
-async def admin_list_users(_admin_uid: str = Depends(require_admin)):
-    """Return all users from the Firestore users collection."""
-    docs = fb_fs.client().collection("users").stream()
-    users = [{"id": d.id, **d.to_dict()} for d in docs]
-    return {"users": users, "total": len(users)}
-
-
-@app.delete("/admin/users/{uid}")
-async def admin_delete_user(uid: str, _admin_uid: str = Depends(require_admin)):
-    """Delete a user from Firebase Auth and Firestore."""
-    if uid == _admin_uid:
-        raise HTTPException(400, "Cannot delete your own admin account.")
-    try:
-        fb_auth.delete_user(uid)
-    except Exception:
-        pass  # User may already be deleted from Auth
-    fb_fs.client().collection("users").document(uid).delete()
-    return {"success": True}
-
-
-@app.patch("/admin/users/{uid}")
-async def admin_update_user(uid: str, body: UpdateUserRequest, admin_uid: str = Depends(require_admin)):
-    """Update a user's display name in Firebase Auth and Firestore."""
-    username = body.username.strip()
-    if not username:
-        raise HTTPException(400, "Username cannot be empty.")
-    fb_auth.update_user(uid, display_name=username)
-    fb_fs.client().collection("users").document(uid).update({"username": username})
-    return {"success": True}

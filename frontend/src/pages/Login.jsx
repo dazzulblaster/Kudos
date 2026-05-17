@@ -4,7 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import './Login.css';
 
-const BACKEND = 'http://localhost:8000';
+
 
 export default function Login() {
     const navigate = useNavigate();
@@ -25,21 +25,7 @@ export default function Login() {
             const result = await signInWithEmailAndPassword(auth, form.email, form.password);
             console.log('[Login] User UID:', result.user.uid);
 
-            // Check admin status via backend (bypasses Firestore security rules)
-            let isAdmin = false;
-            try {
-                const token = await result.user.getIdToken();
-                const res = await fetch(`${BACKEND}/auth/check-admin`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                const data = await res.json();
-                isAdmin = data.is_admin === true;
-                console.log('[Login] Admin check result:', data);
-            } catch (apiErr) {
-                console.warn('Could not check admin status:', apiErr);
-            }
-
-            navigate(isAdmin ? '/admin' : '/dashboard');
+            navigate('/dashboard');
         } catch (err) {
             console.error('Login error:', err.code, err.message);
             if (

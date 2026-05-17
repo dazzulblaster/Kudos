@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import Sidebar from '../components/Sidebar';
 import { useTimer } from '../context/TimerContext';
 import {
     CheckCircle2, FileText, ArrowRight, Timer, Play, Pause,
-    RotateCcw, Sparkles, BookOpen, FolderOpen, Brain, Zap,
+    RotateCcw, Sparkles, FolderOpen, Brain, Zap,
     TrendingUp, Coffee, Target, MessageCircle
 } from 'lucide-react';
 import '../App.css';
@@ -23,13 +23,12 @@ const QUICK_ACTIONS = [
     { label: 'My Library',   icon: FolderOpen,  color: '#86c9a8', bg: '#eef9f4', path: '/library' },
     { label: 'Tasks',        icon: CheckCircle2, color: '#f59e0b', bg: '#fffbeb', path: '/tasks' },
     { label: 'Kudos AI',     icon: Brain,        color: '#8b5cf6', bg: '#f5f3ff', path: '/chatbot' },
-    { label: 'Study Notes',  icon: BookOpen,     color: '#3b82f6', bg: '#eff6ff', path: '/library' },
 ];
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const user = auth.currentUser;
-    const [recentNotes, setRecentNotes] = useState([]);
+
     const [upcomingTasks, setUpcomingTasks] = useState([]);
     const [stats, setStats] = useState({ subjects: 0, files: 0, tasksDone: 0, pendingTasks: 0 });
     const [tipIdx] = useState(() => Math.floor(Math.random() * TIPS.length));
@@ -42,10 +41,6 @@ export default function Dashboard() {
         if (!user) return;
         const fetchData = async () => {
             // Fetch each query independently so one failure doesn't zero out everything
-            try {
-                const nSnap = await getDocs(query(collection(db, 'notes'), where('uid','==',user.uid), orderBy('createdAt','desc'), limit(3)));
-                setRecentNotes(nSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } catch (e) { console.error('Dashboard: notes query failed:', e); }
 
             try {
                 const tSnap = await getDocs(query(collection(db, 'tasks'), where('uid','==',user.uid), where('completed','==',false)));
@@ -234,22 +229,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Recent Notes */}
-                    <div className="dash-card dash-card--blue">
-                        <div className="dash-card-title"><FileText size={15} /> Recent Notes</div>
-                        {recentNotes.length === 0
-                            ? <div className="dash-card-empty">No notes yet — start writing!</div>
-                            : recentNotes.map(n => (
-                                <div className="dash-card-item" key={n.id}>
-                                    <FileText size={13} opacity={0.7} />
-                                    {n.title}
-                                </div>
-                            ))
-                        }
-                        <button className="dash-card-link" onClick={() => navigate('/notes')}>
-                            View all notes <ArrowRight size={13} />
-                        </button>
-                    </div>
+
 
                     {/* AI Feature Card */}
                     <div className="dash-card dash-card--purple">

@@ -32,7 +32,7 @@
 | **PDF Parsing** | PyMuPDF (fitz) | Server-side text extraction |
 | **File Upload** | python-multipart | Required by FastAPI for `UploadFile` |
 
-| **Markdown Rendering** | react-markdown + remark-gfm | In-browser study notes rendering |
+| **Markdown Rendering** | react-markdown + remark-gfm | Study notes, chatbot messages, and document Q&A rendering |
 | **Icons** | Lucide React | 0.577.0 |
 
 ---
@@ -43,7 +43,7 @@
 ┌───────────────────────────────────────────────────────────────┐
 │                  React Frontend  (port 5173)                  │
 │                                                               │
-│  Pages: Dashboard, Library, FileView, Tasks, Chatbot         │
+│  Pages: Dashboard, Library, FileView, Tasks, Chatbot, Account│
 │  State: useState (local) + TimerContext (global)             │
 │  Auth : Firebase Auth SDK (client-side)                      │
 │  DB   : Firestore SDK (direct browser ↔ cloud)               │
@@ -150,7 +150,7 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 ### 4.7 Account Management
 - A dedicated Account page (`/account`) where users can:
   - View their profile card (avatar with initials, display name, email).
-  - **Change username** — updates Firebase Auth `displayName` via `updateProfile`.
+  - **Change username** — updates Firebase Auth `displayName` via `updateProfile` (note: this does **not** update the Firestore `users` collection).
   - **Change password** — requires re-authentication with the current password (`reauthenticateWithCredential`), then calls `updatePassword`. Validates minimum length (6 chars), password match, and prevents reusing the current password.
   - View read-only account details (email, sign-in method).
   - Log out.
@@ -286,7 +286,7 @@ User clicks "Generate Flashcards" in FileView.jsx
       [FastAPI] Gemini returns JSON array string
       [FastAPI] extract_json_array() strips markdown fences, parses JSON
       [FastAPI] Returns {cards: [{question, answer, hint}, ...]}
-  → addDoc(firestore, "flashcards", {uid, fileId, cards, savedAt})
+   → setDoc(firestore, "flashcards/{fileId}", {uid, fileId, cards, savedAt})
   → Cards rendered as interactive flip-cards in the UI
 ```
 
@@ -388,7 +388,7 @@ Kudos/
 │       └── pages/
 │           ├── Login.jsx / Login.css          # Login form
 │           ├── Register.jsx / Register.css    # Registration form
-│           ├── Dashboard.jsx                  # Home — stats, tasks, notes overview
+│           ├── Dashboard.jsx                  # Home — stats, tasks overview
 │           ├── Library.jsx / Library.css      # Subject list
 │           ├── SubjectDetail.jsx / SubjectDetail.css  # File list + PDF upload
 │           ├── FileView.jsx / FileView.css    # Study / Flashcard / Quiz tabs
@@ -421,5 +421,5 @@ Kudos/
 
 7. **Single-file backend:** All backend logic (routes, models, helpers) lives in one `main.py` file. As the system grows, this would benefit from being split into separate router and service modules.
 
-9. **No subject deletion cascade:** Deleting a subject folder from the Library does not automatically delete its associated files from Firebase Storage or Firestore. Files must be deleted individually first.
+8. **No subject deletion cascade:** Deleting a subject folder from the Library does not automatically delete its associated files from Firebase Storage or Firestore. Files must be deleted individually first.
 

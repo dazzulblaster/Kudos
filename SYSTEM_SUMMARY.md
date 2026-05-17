@@ -113,7 +113,8 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 
 #### Study Tab
 - Displays the PDF inline via an `<iframe>` using the Firebase Storage `downloadURL`.
-- Provides a side panel for taking **temporary** study notes (stored in local React state only — not persisted to Firestore).
+- Provides a side panel for taking **study notes** in markdown format — notes are **auto-saved** to Firestore with a 1-second debounce, stored as a `studyNotes` field on the file document. Notes persist across sessions.
+- Features a **Preview/Code toggle** (eye/code icon pill) to switch between editing raw markdown and viewing the rendered preview.
 - Includes a **File Chat** slide-in panel — a RAG (Retrieval-Augmented Generation) chatbot that answers questions strictly based on the document's extracted text. The chat panel can be toggled open/closed via a button in the notes section.
 
 #### Flashcard Tab
@@ -196,6 +197,7 @@ All collections are in Firebase Firestore. Documents are scoped by `uid` (the au
 | `downloadURL` | string | Firebase Storage public URL |
 | `storagePath` | string | Firebase Storage path (for deletion) |
 | `extractedText` | string | Full plain text extracted from PDF |
+| `studyNotes` | string | User's markdown study notes (auto-saved) |
 | `uploadedAt` | Timestamp | Firestore server timestamp |
 
 
@@ -418,8 +420,6 @@ Kudos/
 6. **No real-time updates:** Firestore data is fetched once on page mount. If another session creates or modifies data, the current page will not update without a manual refresh. Firestore real-time listeners (`onSnapshot`) are not used.
 
 7. **Single-file backend:** All backend logic (routes, models, helpers) lives in one `main.py` file. As the system grows, this would benefit from being split into separate router and service modules.
-
-8. **Study tab notes are not saved:** Notes taken in the FileView Study tab are stored in React local state only. They are lost on page reload or navigation.
 
 9. **No subject deletion cascade:** Deleting a subject folder from the Library does not automatically delete its associated files from Firebase Storage or Firestore. Files must be deleted individually first.
 

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import Sidebar from '../components/Sidebar';
@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
     ArrowLeft, MessageCircle, BookOpen, Layers, Brain,
-    RotateCcw, SendHorizonal, X
+    RotateCcw, SendHorizonal, X, Eye, Code, Save, Check
 } from 'lucide-react';
 import './FileView.css';
 import '../App.css';
@@ -165,10 +165,69 @@ function ChatbotPanel({ file, compact }) {
 
 /* ═══════════════════════════════════════════════════════════════════
    STUDY VIEW — PDF iframe + rich markdown notes (split layout)
+   Notes auto-save to Firestore with 1-second debounce
 ═══════════════════════════════════════════════════════════════════ */
 function StudyView({ file }) {
     const [notes, setNotes] = useState('');
     const [showChat, setShowChat] = useState(false);
+    const [viewMode, setViewMode] = useState('code'); // 'code' or 'preview'
+    const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+    const [loadingNotes, setLoadingNotes] = useState(true);
+    const debounceRef = useRef(null);
+
+    // Load saved notes from Firestore on mount
+    useEffect(() => {
+        const loadNotes = async () => {
+            try {
+                const snap = await getDoc(doc(db, 'files', file.id));
+                if (snap.exists() && snap.data().studyNotes) {
+                    setNotes(snap.data().studyNotes);
+                }
+            } catch (e) {
+                console.error('Failed to load study notes:', e);
+            } finally {
+                setLoadingNotes(false);
+            }
+        };
+        loadNotes();
+    }, [file.id]);
+
+    // Auto-save with 1-second debounce
+    const saveNotes = useCallback(async (text) => {
+        setSaveStatus('saving');
+        try {
+            await updateDoc(doc(db, 'files', file.id), {
+                studyNotes: text,
+            });
+            setSaveStatus('saved');
+            // Reset to idle after 2 seconds
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (e) {
+            console.error('Failed to save study notes:', e);
+            setSaveStatus('idle');
+        }
+    }, [file.id]);
+
+    const handleNotesChange = (e) => {
+        const text = e.target.value;
+        setNotes(text);
+        setSaveStatus('idle');
+
+        // Clear previous debounce timer
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+
+        // Set new 1-second debounce
+        debounceRef.current = setTimeout(() => {
+            saveNotes(text);
+        }, 1000);
+    };
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, []);
 
     return (
         <div className="sv-layout">
@@ -196,34 +255,73 @@ function StudyView({ file }) {
                 <ChatbotPanel file={file} compact />
             </div>
 
-            {/* Notes editor + preview */}
+            {/* Notes panel with Preview/Code toggle */}
             <div className="sv-notes">
                 <div className="sv-notes-header">
-                    <span>📝 Study Notes</span>
-                    <button
-                        className={`sv-chat-toggle-btn${showChat ? ' active' : ''}`}
-                        onClick={() => setShowChat(v => !v)}
-                        title={showChat ? 'Close AI Chat' : 'Open AI Chat'}
-                    >
-                        <MessageCircle size={15} />
-                        {showChat ? 'Close Chat' : 'Ask AI'}
-                    </button>
-                </div>
-                <textarea
-                    className="sv-textarea"
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder={`# ${file.name.replace('.pdf', '')}\n\nStart taking notes here...\n\nTips:\n# Heading\n- Bullet point\n**bold** *italic*`}
-                />
-                <div className="sv-notes-preview">
-                    <div className="sv-preview-label">Preview</div>
-                    <div className="sv-preview-body">
-                        {notes
-                            ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{notes}</ReactMarkdown>
-                            : <span style={{ color: '#ccc' }}>Your formatted notes will appear here...</span>
-                        }
+                    <div className="sv-notes-header-left">
+                        <span>📝 Study Notes</span>
+                        {/* Save status indicator */}
+                        {saveStatus === 'saving' && (
+                            <span className="sv-save-status saving">
+                                <Save size={12} /> Saving...
+                            </span>
+                        )}
+                        {saveStatus === 'saved' && (
+                            <span className="sv-save-status saved">
+                                <Check size={12} /> Saved
+                            </span>
+                        )}
+                    </div>
+                    <div className="sv-notes-header-right">
+                        {/* Preview / Code toggle */}
+                        <div className="sv-mode-toggle">
+                            <button
+                                className={`sv-mode-btn${viewMode === 'code' ? ' active' : ''}`}
+                                onClick={() => setViewMode('code')}
+                                title="Edit markdown"
+                            >
+                                <Code size={14} />
+                            </button>
+                            <button
+                                className={`sv-mode-btn${viewMode === 'preview' ? ' active' : ''}`}
+                                onClick={() => setViewMode('preview')}
+                                title="Preview"
+                            >
+                                <Eye size={14} />
+                            </button>
+                        </div>
+                        <button
+                            className={`sv-chat-toggle-btn${showChat ? ' active' : ''}`}
+                            onClick={() => setShowChat(v => !v)}
+                            title={showChat ? 'Close AI Chat' : 'Open AI Chat'}
+                        >
+                            <MessageCircle size={15} />
+                            {showChat ? 'Close Chat' : 'Ask AI'}
+                        </button>
                     </div>
                 </div>
+
+                {loadingNotes ? (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span className="spin" style={{ width: 28, height: 28, borderTopColor: '#86c9a8' }} />
+                    </div>
+                ) : viewMode === 'code' ? (
+                    <textarea
+                        className="sv-textarea"
+                        value={notes}
+                        onChange={handleNotesChange}
+                        placeholder={`# ${file.name.replace('.pdf', '')}\n\nStart taking notes here...\n\nTips:\n# Heading\n- Bullet point\n**bold** *italic*`}
+                    />
+                ) : (
+                    <div className="sv-preview-full">
+                        <div className="sv-preview-body">
+                            {notes
+                                ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{notes}</ReactMarkdown>
+                                : <span style={{ color: '#ccc' }}>Your formatted notes will appear here...</span>
+                            }
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

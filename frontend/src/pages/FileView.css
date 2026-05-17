@@ -167,6 +167,79 @@
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
+    gap: 10px;
+}
+
+.sv-notes-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sv-notes-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Save status indicator */
+.sv-save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 50px;
+    animation: fadeIn 0.2s ease;
+}
+.sv-save-status.saving {
+    color: #f59e0b;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+}
+.sv-save-status.saved {
+    color: #16a34a;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Preview / Code toggle — light pill */
+.sv-mode-toggle {
+    display: flex;
+    align-items: center;
+    background: #e8eaed;
+    border-radius: 50px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.sv-mode-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 26px;
+    border-radius: 50px;
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.sv-mode-btn.active {
+    background: #fff;
+    color: #333;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.sv-mode-btn:not(.active):hover {
+    color: #555;
 }
 
 /* Ask AI toggle button */
@@ -207,12 +280,15 @@
     color: #333;
     resize: none;
     background: #fff;
-    border-bottom: 1px solid #eef2f0;
-    min-height: 45%;
 }
 
-.sv-notes-preview { flex: 1; overflow-y: auto; padding: 16px 20px; }
-.sv-preview-label { font-size: 0.75rem; font-weight: 700; color: #bbb; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.05em; }
+/* Full-height preview when toggle is on preview mode */
+.sv-preview-full {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
 .sv-preview-body { font-size: 0.92rem; line-height: 1.75; color: #222; }
 .sv-preview-body h1 { font-size: 1.5rem; margin: 14px 0 8px; }
 .sv-preview-body h2 { font-size: 1.2rem; margin: 12px 0 6px; }

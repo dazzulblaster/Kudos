@@ -82,7 +82,7 @@
 
 ### 4.1 Authentication
 - Email and password registration and login via **Firebase Authentication**.
-- On registration, the user's display name is stored via `updateProfile`, and a user profile document is also saved to the Firestore `users` collection (containing `uid`, `username`, `email`, `createdAt`).
+- On registration, the user's display name is stored via `updateProfile` on the Firebase Auth user object. All user identity data (email, password, display name) is managed entirely by Firebase Authentication — no separate Firestore `users` collection is used.
 - Session persistence is handled automatically by the Firebase SDK.
 - A custom `PrivateRoute` component in React Router wraps all protected pages and redirects unauthenticated users to `/login`.
 - All Firestore queries are scoped by `uid` (the Firebase user ID), so each user only sees their own data.
@@ -150,7 +150,7 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 ### 4.7 Account Management
 - A dedicated Account page (`/account`) where users can:
   - View their profile card (avatar with initials, display name, email).
-  - **Change username** — updates Firebase Auth `displayName` via `updateProfile` (note: this does **not** update the Firestore `users` collection).
+  - **Change username** — updates Firebase Auth `displayName` via `updateProfile`.
   - **Change password** — requires re-authentication with the current password (`reauthenticateWithCredential`), then calls `updatePassword`. Validates minimum length (6 chars), password match, and prevents reusing the current password.
   - View read-only account details (email, sign-in method).
   - Log out.
@@ -171,13 +171,7 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 
 All collections are in Firebase Firestore. Documents are scoped by `uid` (the authenticated user's Firebase ID).
 
-### `users`
-| Field | Type | Description |
-|---|---|---|
-| `uid` | string | Firebase user ID (also used as the document ID) |
-| `username` | string | Display name |
-| `email` | string | Email address |
-| `createdAt` | Timestamp | Firestore server timestamp |
+> **Note:** User identity data (email, password, display name) is stored in **Firebase Authentication**, not in Firestore. There is no `users` Firestore collection.
 
 
 ### `subjects`

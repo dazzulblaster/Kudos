@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 import './Register.css';
 
 export default function Register() {
@@ -28,19 +27,6 @@ export default function Register() {
         try {
             const result = await createUserWithEmailAndPassword(auth, form.email, form.password);
             await updateProfile(result.user, { displayName: form.username });
-
-            // Save user to Firestore — wrapped separately so a permission
-            // error doesn't block the entire registration (Auth already succeeded)
-            try {
-                await setDoc(doc(db, 'users', result.user.uid), {
-                    uid: result.user.uid,
-                    username: form.username,
-                    email: form.email,
-                    createdAt: serverTimestamp(),
-                });
-            } catch (firestoreErr) {
-                console.warn('Could not save user to Firestore (security rules may be blocking writes):', firestoreErr);
-            }
 
             navigate('/dashboard');
         } catch (err) {

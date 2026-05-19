@@ -473,3 +473,145 @@
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================
+   Tag Manager Panel
+   ============================================ */
+.tag-manager-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    animation: fadeSlideIn 0.25s ease;
+}
+
+.tag-manager-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.tag-manager-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.tag-manager-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    background: #f1f5f9;
+    padding: 3px 10px;
+    border-radius: 50px;
+}
+
+.tag-manager-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.tag-manager-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px 6px 14px;
+    border-radius: 50px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s;
+}
+.tag-manager-pill:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.tag-manager-pill-x {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+}
+.tag-manager-pill-x:hover {
+    background: #fecaca;
+    color: #ef4444;
+}
+
+.tag-manager-add-row {
+    display: flex;
+    gap: 8px;
+}
+
+.tag-manager-input {
+    flex: 1;
+    padding: 9px 16px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: #334155;
+    outline: none;
+    background: #f8fafc;
+    transition: border-color 0.2s, background 0.2s;
+}
+.tag-manager-input:focus {
+    border-color: #86c9a8;
+    background: #fff;
+}
+.tag-manager-input::placeholder {
+    color: #94a3b8;
+}
+
+.tag-manager-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 9px 18px;
+    border: none;
+    border-radius: 50px;
+    background: #86c9a8;
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.tag-manager-add-btn:hover:not(:disabled) {
+    background: #5fa88a;
+}
+.tag-manager-add-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.tag-manager-error {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #ef4444;
+    font-weight: 600;
+    padding: 6px 12px;
+    background: #fef2f2;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+}

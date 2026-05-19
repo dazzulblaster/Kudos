@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { auth } from '../firebase';
 import Sidebar from '../components/Sidebar';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import '../App.css';
 
 const BACKEND_URL = 'http://localhost:8000';
@@ -31,16 +33,61 @@ export default function Chatbot() {
         setMessages(prev => [...prev, { role: 'user', content: msg }]);
         setInput('');
         setLoading(true);
+
+        // Add an empty bot message that we'll stream into
+        const botIdx = messages.length + 1; // +1 for the user message we just added
+        setMessages(prev => [...prev, { role: 'bot', content: '' }]);
+
         try {
-            const res = await fetch(`${BACKEND_URL}/chat`, {
+            const res = await fetch(`${BACKEND_URL}/chat-stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: msg, user_id: user?.uid }),
             });
-            const data = await res.json();
-            setMessages(prev => [...prev, { role: 'bot', content: data.response || 'Sorry, I could not respond.' }]);
+            if (!res.ok) throw new Error('Stream failed');
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulated = '';
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const payload = line.slice(6);
+                    if (payload === '[DONE]') break;
+                    try {
+                        const { text: chunk } = JSON.parse(payload);
+                        accumulated += chunk;
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            updated[botIdx] = { role: 'bot', content: accumulated };
+                            return updated;
+                        });
+                    } catch { /* skip malformed */ }
+                }
+            }
+
+            // Final safeguard: if nothing streamed, show fallback
+            if (!accumulated) {
+                setMessages(prev => {
+                    const updated = [...prev];
+                    updated[botIdx] = { role: 'bot', content: 'Sorry, I could not respond.' };
+                    return updated;
+                });
+            }
         } catch {
-            setMessages(prev => [...prev, { role: 'bot', content: '⚠️ Cannot reach server. Make sure the backend is running.' }]);
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[botIdx] = { role: 'bot', content: '⚠️ Cannot reach server. Make sure the backend is running.' };
+                return updated;
+            });
         } finally { setLoading(false); }
     };
 
@@ -65,28 +112,30 @@ export default function Chatbot() {
                         <div className="chat-ai-icon"><img src="/ai-icon.png" alt="AI" style={{ width: 22, height: 22, objectFit: 'contain' }} /></div>
                         <div>
                             <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Kudos AI</div>
-                            <div style={{ fontSize: '0.78rem', opacity: 0.8 }}>{loading ? '⏳ Thinking...' : '🟢 Online'}</div>
+                            <div style={{ fontSize: '0.78rem', opacity: 0.8 }}>{loading ? '✨ Streaming...' : '🟢 Online'}</div>
                         </div>
                     </div>
 
                     {/* Messages */}
                     <div className="chat-msgs">
                         {messages.map((msg, i) => (
-                            <div key={i} className={`chat-bubble-wrap ${msg.role}`}>
-                                {msg.role === 'bot' && (
-                                    <div style={{
-                                        width: 30, height: 30, background: '#86c9a8', borderRadius: '50%',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        flexShrink: 0, overflow: 'hidden', padding: 4,
-                                    }}><img src="/ai-icon.png" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
-                                )}
-                                <div className={`chat-bubble ${msg.role}`} style={{ whiteSpace: 'pre-wrap' }}>
-                                    {msg.content}
+                            (msg.role === 'user' || msg.content) ? (
+                                <div key={i} className={`chat-bubble-wrap ${msg.role}`}>
+                                    {msg.role === 'bot' && (
+                                        <div style={{
+                                            width: 30, height: 30, background: '#86c9a8', borderRadius: '50%',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexShrink: 0, overflow: 'hidden', padding: 4,
+                                        }}><img src="/ai-icon.png" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
+                                    )}
+                                    <div className={`chat-bubble ${msg.role}`}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : null
                         ))}
 
-                        {loading && (
+                        {loading && messages[messages.length - 1]?.content === '' && (
                             <div className="chat-bubble-wrap bot">
                                 <div style={{ width: 30, height: 30, background: '#86c9a8', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 4 }}><img src="/ai-icon.png" alt="AI" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
                                 <div className="chat-bubble bot" style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '14px 16px' }}>
@@ -96,6 +145,7 @@ export default function Chatbot() {
                                 </div>
                             </div>
                         )}
+
                         <div ref={bottomRef} />
                     </div>
 

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
@@ -23,11 +24,11 @@ app.add_middleware(
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-# Chat model chain — try best quality first, fall back on overload
+# Chat model chain — fastest first for low latency, fall back on overload
 MODEL_CHAIN = [
-    "models/gemini-2.5-flash",
-    "models/gemini-flash-latest",
-    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.5-flash-lite",   # fastest, good for most chat
+    "models/gemini-flash-latest",      # solid fallback
+    "models/gemini-2.5-flash",         # best quality, but slower (thinking model)
 ]
 
 # JSON generation chain — start with the fastest/most-available lite model
@@ -37,11 +38,11 @@ JSON_MODEL_CHAIN = [
     "models/gemini-2.5-flash",         # last resort
 ]
 
-SYSTEM_PROMPT = """You are Kudos AI, a friendly and knowledgeable study assistant for students.
-Your role is to help students understand academic concepts, plan their studies, summarize topics,
+SYSTEM_PROMPT = """You are Kudos AI, a friendly, knowledgeable, and well-rounded assistant built into the Kudos study platform.
+Your primary expertise is helping students understand academic concepts, plan their studies, summarize topics,
 explain difficult ideas in simple terms, and motivate them to learn.
-Be concise, clear, and encouraging. Use emojis occasionally to make the conversation friendly.
-If a question is outside of academic topics, politely redirect the student back to studying."""
+However, you are happy to help with ANY question — whether it's about coding, career advice, general knowledge, daily life, or just casual conversation.
+Be concise, clear, and encouraging. Use emojis occasionally to make the conversation friendly."""
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -131,13 +132,38 @@ def _call_with_chain(prompt: str, chain: list) -> str:
 
 
 def ai(prompt: str) -> str:
-    """General chat — prefers high-quality models."""
+    """General chat — prefers fast models."""
     return _call_with_chain(prompt, MODEL_CHAIN)
 
 
 def ai_json(prompt: str) -> str:
     """Structured JSON generation — prefers fast/available lite models."""
     return _call_with_chain(prompt, JSON_MODEL_CHAIN)
+
+
+def _stream_with_chain(prompt: str, chain: list):
+    """Try each model in the chain with streaming. Yields text chunks."""
+    if not client:
+        raise HTTPException(503, "Gemini API key not configured.")
+    last_err = None
+    for model in chain:
+        try:
+            stream = client.models.generate_content_stream(
+                model=model, contents=prompt
+            )
+            def _generate(s=stream):
+                for chunk in s:
+                    if chunk.text:
+                        yield f"data: {json.dumps({'text': chunk.text})}\n\n"
+                yield "data: [DONE]\n\n"
+            return _generate()
+        except Exception as e:
+            last_err = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                print(f"[warn] {model} overloaded, trying next model...")
+                continue
+            raise
+    raise HTTPException(503, f"All models are busy. Last error: {last_err}")
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -163,6 +189,21 @@ async def chat(request: ChatRequest):
         raise HTTPException(500, f"AI error: {str(e)}")
 
 
+@app.post("/chat-stream")
+async def chat_stream(request: ChatRequest):
+    """Streaming version of /chat — returns SSE text chunks."""
+    if not client:
+        raise HTTPException(503, "Gemini API key not configured.")
+    if not request.message.strip():
+        raise HTTPException(400, "Message cannot be empty")
+    full_prompt = f"{SYSTEM_PROMPT}\n\nStudent: {request.message}"
+    return StreamingResponse(
+        _stream_with_chain(full_prompt, MODEL_CHAIN),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     """Upload a PDF → get back the extracted plain text."""
@@ -186,8 +227,14 @@ async def file_chat(request: FileChat):
 
     # Limit context to ~10k chars to stay within token limits
     ctx = request.context[:10000]
-    prompt = f"""You are a precise study assistant. Answer the student's question using ONLY the document excerpt below.
-If the answer cannot be found in the document, say "I couldn't find that in the document."
+    prompt = f"""You are a helpful and precise study assistant. Use the document excerpt below as your PRIMARY source to answer the student's question.
+
+Rules:
+1. If the answer CAN be found in the document, answer based on the document content. Start naturally without any special prefix.
+2. If the answer CANNOT be found in the document, you should still answer the question using your general knowledge, but you MUST begin your response with exactly this disclaimer on its own line:
+   "⚠️ **Note:** This answer is based on my general knowledge, not from your uploaded document."
+   Then provide the helpful answer below.
+3. If the question is partially covered by the document, answer with what the document says first, then supplement with general knowledge and clearly indicate which part comes from general knowledge.
 
 --- DOCUMENT EXCERPT ---
 {ctx}
@@ -198,6 +245,35 @@ Student question: {request.message}"""
         return ChatResponse(response=ai(prompt))
     except Exception as e:
         raise HTTPException(500, f"AI error: {str(e)}")
+
+
+@app.post("/file-chat-stream")
+async def file_chat_stream(request: FileChat):
+    """Streaming version of /file-chat — returns SSE text chunks."""
+    if not client:
+        raise HTTPException(503, "Gemini API key not configured.")
+    if not request.message.strip():
+        raise HTTPException(400, "Message cannot be empty.")
+    ctx = request.context[:10000]
+    prompt = f"""You are a helpful and precise study assistant. Use the document excerpt below as your PRIMARY source to answer the student's question.
+
+Rules:
+1. If the answer CAN be found in the document, answer based on the document content. Start naturally without any special prefix.
+2. If the answer CANNOT be found in the document, you should still answer the question using your general knowledge, but you MUST begin your response with exactly this disclaimer on its own line:
+   "⚠️ **Note:** This answer is based on my general knowledge, not from your uploaded document."
+   Then provide the helpful answer below.
+3. If the question is partially covered by the document, answer with what the document says first, then supplement with general knowledge and clearly indicate which part comes from general knowledge.
+
+--- DOCUMENT EXCERPT ---
+{ctx}
+--- END OF DOCUMENT ---
+
+Student question: {request.message}"""
+    return StreamingResponse(
+        _stream_with_chain(prompt, MODEL_CHAIN),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/generate-quiz")

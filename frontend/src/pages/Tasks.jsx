@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
-    collection, addDoc, getDocs, updateDoc, deleteDoc, doc,
+    collection, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc,
     query, where, serverTimestamp, orderBy
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import Sidebar from '../components/Sidebar';
 import {
     Plus, CheckCircle2, Circle, Trash2, Pencil, CalendarDays,
-    Flag, Tag, TrendingUp, Clock, AlertCircle, X, Filter
+    Flag, Tag, TrendingUp, Clock, AlertCircle, X, Filter, Settings
 } from 'lucide-react';
 import '../App.css';
 import './Tasks.css';
@@ -19,7 +19,7 @@ const PRIORITIES = [
     { value: 'low',    label: 'Low',    color: '#22c55e', bg: '#f0fdf4' },
 ];
 
-const CATEGORIES = ['Exam', 'Assignment', 'Reading', 'Project', 'Lab', 'Revision', 'Other'];
+const DEFAULT_CATEGORIES = ['Exam', 'Assignment', 'Reading', 'Project', 'Lab', 'Revision', 'Other'];
 
 const EMPTY_FORM = { title: '', description: '', dueDate: '', priority: 'medium', category: 'Other' };
 
@@ -59,10 +59,55 @@ export default function Tasks() {
     const [sortBy, setSortBy]     = useState('created'); // 'created' | 'due' | 'priority'
     const [showFilters, setShowFilters] = useState(false);
 
+    // ── Custom categories state ──
+    const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+    const [showTagManager, setShowTagManager] = useState(false);
+    const [newTag, setNewTag] = useState('');
+    const [tagError, setTagError] = useState('');
+
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, u => setUser(u));
         return unsub;
     }, []);
+
+    // ── Load custom categories from Firestore ──
+    useEffect(() => {
+        if (!user) return;
+        const loadCategories = async () => {
+            try {
+                const snap = await getDoc(doc(db, 'userSettings', user.uid));
+                if (snap.exists() && snap.data().categories) {
+                    setCategories(snap.data().categories);
+                } else {
+                    // First time — seed with defaults
+                    await setDoc(doc(db, 'userSettings', user.uid), { categories: DEFAULT_CATEGORIES }, { merge: true });
+                }
+            } catch (e) { console.error('Load categories error:', e); }
+        };
+        loadCategories();
+    }, [user]);
+
+    const saveCategories = async (updated) => {
+        setCategories(updated);
+        try {
+            await setDoc(doc(db, 'userSettings', user.uid), { categories: updated }, { merge: true });
+        } catch (e) { console.error('Save categories error:', e); }
+    };
+
+    const addCategory = () => {
+        const name = newTag.trim();
+        if (!name) return;
+        if (categories.length >= 20) { setTagError('Maximum 20 categories allowed.'); return; }
+        if (categories.some(c => c.toLowerCase() === name.toLowerCase())) { setTagError('Category already exists.'); return; }
+        setTagError('');
+        saveCategories([...categories, name]);
+        setNewTag('');
+    };
+
+    const deleteCategory = (cat) => {
+        saveCategories(categories.filter(c => c !== cat));
+        if (filterCategory === cat) setFilterCategory('all');
+    };
 
     const fetchTasks = async u => {
         if (!u) { setFetching(false); return; }
@@ -226,6 +271,9 @@ export default function Tasks() {
                         <button className={`tasks-filter-btn${showFilters ? ' active' : ''}`} onClick={() => setShowFilters(f => !f)}>
                             <Filter size={14}/> Filter
                         </button>
+                        <button className={`tasks-filter-btn${showTagManager ? ' active' : ''}`} onClick={() => setShowTagManager(v => !v)}>
+                            <Settings size={14}/> Tags
+                        </button>
                     </div>
                 </div>
 
@@ -242,12 +290,56 @@ export default function Tasks() {
                         </div>
                         <div className="filter-group">
                             <span className="filter-label">Category:</span>
-                            {['all', ...CATEGORIES].map(c => (
+                            {['all', ...categories].map(c => (
                                 <button key={c} className={`filter-chip${filterCategory === c ? ' active' : ''}`} onClick={() => setFilterCategory(c)}>
                                     {c === 'all' ? 'All' : c}
                                 </button>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* ── Tag manager panel ── */}
+                {showTagManager && (
+                    <div className="tag-manager-panel">
+                        <div className="tag-manager-header">
+                            <div className="tag-manager-title">
+                                <Tag size={15} /> Manage Categories
+                            </div>
+                            <span className="tag-manager-count">{categories.length}/20</span>
+                        </div>
+                        <div className="tag-manager-list">
+                            {categories.map(cat => (
+                                <span key={cat} className="tag-manager-pill">
+                                    {cat}
+                                    <button
+                                        className="tag-manager-pill-x"
+                                        onClick={() => deleteCategory(cat)}
+                                        title={`Remove "${cat}"`}
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                        <div className="tag-manager-add-row">
+                            <input
+                                className="tag-manager-input"
+                                value={newTag}
+                                onChange={e => { setNewTag(e.target.value); setTagError(''); }}
+                                onKeyDown={e => e.key === 'Enter' && addCategory()}
+                                placeholder="New category name..."
+                                maxLength={24}
+                            />
+                            <button
+                                className="tag-manager-add-btn"
+                                onClick={addCategory}
+                                disabled={!newTag.trim()}
+                            >
+                                <Plus size={14} /> Add
+                            </button>
+                        </div>
+                        {tagError && <div className="tag-manager-error">{tagError}</div>}
                     </div>
                 )}
 
@@ -345,7 +437,7 @@ export default function Tasks() {
                             <div className="tasks-modal-field">
                                 <label className="modal-label">Category</label>
                                 <div className="tasks-cat-grid">
-                                    {CATEGORIES.map(c => (
+                                    {categories.map(c => (
                                         <button key={c} type="button"
                                             className={`tasks-cat-btn${form.category === c ? ' active' : ''}`}
                                             onClick={() => setForm({...form, category: c})}

@@ -115,6 +115,7 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 - Displays the PDF inline via an `<iframe>` using the Firebase Storage `downloadURL`.
 - Provides a side panel for taking **study notes** in markdown format — notes are **auto-saved** to Firestore with a 1-second debounce, stored as a `studyNotes` field on the file document. Notes persist across sessions.
 - Features a **Preview/Code toggle** (eye/code icon pill) to switch between editing raw markdown and viewing the rendered preview.
+- Includes a **floating format toolbar** — when the user selects text in the notes editor, a contextual toolbar appears above the selection with quick-format buttons: Bold (`**`), Italic (`*`), Bold+Italic (`***`), Strikethrough (`~~`), Heading 2 (`##`), Heading 3 (`###`), Bullet List (`-`), Numbered List (`1.`), Inline Code (`` ` ``), and Blockquote (`>`). The toolbar uses a mirror-div technique to calculate the caret position in the textarea for accurate placement, and auto-hides after formatting or on outside click.
 - Includes a **File Chat** slide-in panel — a RAG (Retrieval-Augmented Generation) chatbot that answers questions strictly based on the document's extracted text. The chat panel can be toggled open/closed via a button in the notes section.
 
 #### Flashcard Tab
@@ -134,9 +135,10 @@ Once a PDF is uploaded, users access it through the **FileView** page, which has
 
 ### 4.5 Tasks
 - A full task management system with the following fields per task:
-  - `title`, `description`, `dueDate`, `priority` (High / Medium / Low), `category` (Exam / Assignment / Reading / Project / Lab / Revision / Other), `completed`.
+  - `title`, `description`, `dueDate`, `priority` (High / Medium / Low), `category` (user-defined, defaults: Exam / Assignment / Reading / Project / Lab / Revision / Other), `completed`.
+- **Custom categories:** Users can create and delete their own task categories via a "Tags" manager panel. Categories are stored per-user in the `userSettings` Firestore collection and persist across sessions. The system seeds 7 default categories on first use, and users can have up to 20 categories. Duplicate and empty names are rejected. Deleting a category does not affect existing tasks — they retain their category string.
 - Supports creating, editing, marking complete/incomplete, and deleting tasks.
-- Client-side filtering by priority and category.
+- Client-side filtering by priority and category (dynamic, reflects user's custom categories).
 - Client-side sorting by newest first, due date, or priority.
 - Overdue detection — tasks past their due date are visually highlighted.
 - Stored in the `tasks` Firestore collection scoped by `uid`.
@@ -203,7 +205,7 @@ All collections are in Firebase Firestore. Documents are scoped by `uid` (the au
 | `description` | string | Optional description |
 | `dueDate` | string | ISO date string |
 | `priority` | string | `"high"` / `"medium"` / `"low"` |
-| `category` | string | `"Exam"` / `"Assignment"` / `"Reading"` / `"Project"` / `"Lab"` / `"Revision"` / `"Other"` |
+| `category` | string | User-defined category string (defaults: Exam, Assignment, Reading, Project, Lab, Revision, Other) |
 | `completed` | boolean | Completion status |
 | `createdAt` | Timestamp | Firestore server timestamp |
 
@@ -222,6 +224,12 @@ All collections are in Firebase Firestore. Documents are scoped by `uid` (the au
 | `fileId` | string | Parent file document ID |
 | `questions` | array | Array of `{question, options[], answer, explanation}` objects |
 | `savedAt` | Timestamp | Firestore server timestamp |
+
+### `userSettings`
+| Field | Type | Description |
+|---|---|---|
+| *(document ID)* | string | User's Firebase UID (document ID = `uid`) |
+| `categories` | array | Array of category name strings for the task manager |
 
 ---
 
